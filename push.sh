@@ -26,13 +26,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── 1. 获取 OAuth Token（不打印值） ──────────────────────────
+# 注意：必须直接 source，不能用 $(...) 包起来 —— 命令替换会开子 shell，
+# source 里 export 的变量传不回当前进程。
 echo "→ 获取 GitHub 凭证..."
-TOKEN_OUT=$(source /root/.codebuddy/skills/github-connector/scripts/get_token.sh github 2>&1) || {
-    echo "$TOKEN_OUT" >&2
-    err "无法获取 GitHub 凭证。请在 CodeBuddy 设置页 →「连接器」处重新授权 GitHub。"
-}
+source /root/.codebuddy/skills/github-connector/scripts/get_token.sh github >/dev/null 2>&1 || true
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-[[ -z "$GITHUB_TOKEN" ]] && err "Token 为空，请先在设置页授权 GitHub 连接器。"
+if [[ -z "$GITHUB_TOKEN" ]]; then
+    err "无法获取 GitHub 凭证。请在 CodeBuddy 设置页 →「连接器」处重新授权 GitHub。"
+fi
 
 # ── 2. 确定仓库 ───────────────────────────────────────────────
 if [[ -n "$CREATE_NAME" ]]; then
