@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">垂纶</string>
+    <string name="tile_today">今日鱼情</string>
+    <string name="complication_fish">垂纶 · 鱼口指数</string>
+</resources>
