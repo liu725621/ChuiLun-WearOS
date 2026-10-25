@@ -40,10 +40,11 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
     val save = SaveStore(context)
     private val detector = CastDetector(context)
 
-    init {
-        Feedback.init(context)
-        refreshDaily()
-    }
+    // 注意：初始化逻辑必须放在本类所有 by mutableStateOf 属性声明之后。
+    // Kotlin 按声明顺序初始化，若 init 块写在属性之前，refreshDaily() 里给
+    // theme / tide 等委托属性赋值时委托对象仍为 null，会抛
+    // NullPointerException: "$this$setValue" is null —— 导致启动即闪退。
+    // 详见文件末尾的 init 块。
 
     // ---------------- 状态 ----------------
 
@@ -140,6 +141,14 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
     fun unlockedSpots(): List<Spot> = ALL_SPOTS.filter { unlocked(it) }
 
     fun nowIndex(s: Spot): Int = FishingIndex.nowScore(s)
+
+    // ---------------- 初始化 ----------------
+    // 必须位于所有 by mutableStateOf 属性之后（Kotlin 按声明顺序初始化）。
+
+    init {
+        Feedback.init(context)
+        refreshDaily()
+    }
 
     // ---------------- 初始化与刷新 ----------------
 

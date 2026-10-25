@@ -14,8 +14,8 @@ android {
         // targetSdk 必须与 Wear OS 5（Galaxy Watch 7 = Android 14 / API 34）对齐。
         // 之前设成 36，而设备只有 34，系统会按"未来版本"解析部分行为，是闪退的嫌疑之一。
         targetSdk = 34
-        versionCode = 3
-        versionName = "2.0.2"
+        versionCode = 4
+        versionName = "2.0.3"
     }
 
     compileOptions {
@@ -46,6 +46,13 @@ android {
             isEnable = false
         }
     }
+
+    testOptions {
+        unitTests {
+            // 让 Robolectric 能读到 res/ 与 assets/
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -68,4 +75,11 @@ dependencies {
     implementation("androidx.wear.protolayout:protolayout-expression:1.4.2")
     // 已移除：androidx.wear:wear:1.4.0（legacy 库，代码零引用，却拉入大量无用类）
     // 已移除：protolayout-material（零引用）
+
+    // 本地 JVM 启动验证：在没有真机的情况下把 Activity 真正跑一遍
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
