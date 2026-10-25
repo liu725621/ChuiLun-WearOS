@@ -11,9 +11,11 @@ android {
     defaultConfig {
         applicationId = "com.chuilun.app"
         minSdk = 33          // Wear OS 4+
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        // targetSdk 必须与 Wear OS 5（Galaxy Watch 7 = Android 14 / API 34）对齐。
+        // 之前设成 36，而设备只有 34，系统会按"未来版本"解析部分行为，是闪退的嫌疑之一。
+        targetSdk = 34
+        versionCode = 3
+        versionName = "2.0.2"
     }
 
     compileOptions {
@@ -47,7 +49,9 @@ android {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.08.01"))
+    // 与 Wear Compose 1.5.6 对齐：它声明的是 Compose ui 1.8.2 / runtime 1.8.0。
+    // 之前用 BOM 2025.08.01（Compose 1.9.0），跨了一个 minor 版本，是启动崩溃的首要嫌疑。
+    implementation(platform("androidx.compose:compose-bom:2025.07.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.runtime:runtime")
@@ -58,10 +62,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.core:core-ktx:1.16.0")
 
-    // 今日鱼情 Tile 与表盘 Complication
+    // 今日鱼情 Tile
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
     implementation("androidx.wear.protolayout:protolayout-expression:1.4.2")
-    implementation("androidx.wear.protolayout:protolayout-material:1.4.2")
-    implementation("androidx.wear:wear:1.4.0")
+    // 已移除：androidx.wear:wear:1.4.0（legacy 库，代码零引用，却拉入大量无用类）
+    // 已移除：protolayout-material（零引用）
 }
