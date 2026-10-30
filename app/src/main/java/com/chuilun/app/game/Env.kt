@@ -3,27 +3,62 @@ package com.chuilun.app.game
 import com.chuilun.app.model.Phase
 import com.chuilun.app.model.Season
 import com.chuilun.app.model.Weather
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.abs
 
 /**
  * 环境状态：时段、季节、天气、月相、潮汐。
  * 全部由系统时间推导，同一时刻在不同进程（App / 磁贴 / 通知）得到一致结果。
+ *
+ * 性能注意：这些函数在列表渲染时会被上百次调用（每个钓场 × 每帧）。
+ * 原实现每次 `Calendar.getInstance()` + `SimpleDateFormat.format`，一帧要分配
+ * 上千个临时对象，是明显的掉帧来源。这里对「分钟级 / 天级 / 钓场天气」做了记忆化，
+ * 同一分钟内重复调用直接命中缓存。
  */
 object Env {
 
-    private val dayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+    private const val MINUTE = 60_000L
 
-    fun dayKey(now: Long = System.currentTimeMillis()): String = dayFmt.format(Date(now))
+    private val zone: ZoneId = ZoneId.systemDefault()
 
-    fun hour(now: Long = System.currentTimeMillis()): Int =
-        Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.HOUR_OF_DAY)
+    // 分钟级缓存
+    private var memoMinute = Long.MIN_VALUE
+    private var memoHour = 0
+    private var memoMinuteOfHour = 0
 
-    fun minute(now: Long = System.currentTimeMillis()): Int =
-        Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.MINUTE)
+    // 天级缓存
+    private var memoDay = Long.MIN_VALUE
+    private var memoDayKey = ""
+
+    private fun refreshMinute(now: Long) {
+        val m = now / MINUTE
+        if (m == memoMinute) return
+        memoMinute = m
+        val t = Instant.ofEpochMilli(now).atZone(zone)
+        memoHour = t.hour
+        memoMinuteOfHour = t.minute
+    }
+
+    fun dayKey(now: Long = System.currentTimeMillis()): String {
+        val d = now / 86_400_000L
+        if (d != memoDay) {
+            memoDay = d
+            memoDayKey = LocalDate.ofInstant(Instant.ofEpochMilli(now), zone).toString()
+        }
+        return memoDayKey
+    }
+
+    fun hour(now: Long = System.currentTimeMillis()): Int {
+        refreshMinute(now)
+        return memoHour
+    }
+
+    fun minute(now: Long = System.currentTimeMillis()): Int {
+        refreshMinute(now)
+        return memoMinuteOfHour
+    }
 
     /** 0晨 1昼 2昏 3夜 */
     fun phaseIndex(now: Long = System.currentTimeMillis()): Int {
@@ -40,33 +75,40 @@ object Env {
 
     /** 0春 1夏 2秋 3冬 */
     fun seasonIndex(now: Long = System.currentTimeMillis()): Int {
-        val m = Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.MONTH)
+        val m = Instant.ofEpochMilli(now).atZone(zone).monthValue
         return when (m) {
-            2, 3, 4 -> 0
-            5, 6, 7 -> 1
-            8, 9, 10 -> 2
+            3, 4, 5 -> 0
+            6, 7, 8 -> 1
+            9, 10, 11 -> 2
             else -> 3
         }
     }
 
     fun season(now: Long = System.currentTimeMillis()): Season = Season.entries[seasonIndex(now)]
 
-    /** 天气：按「日期 + 钓场」确定性生成，同一天同一钓场稳定不变 */
+    /** 天气按「日期 + 钓场」确定性生成，同一天同一钓场稳定不变 */
+    private val weatherCache = HashMap<String, Weather>()
+
     fun weather(spotId: String, day: String): Weather {
-        val r = kotlin.random.Random((spotId + day).hashCode()).nextInt(100)
-        return when {
+        val key = spotId + day
+        weatherCache[key]?.let { return it }
+        val r = kotlin.random.Random(key.hashCode()).nextInt(100)
+        val w = when {
             r < 46 -> Weather.SUNNY
             r < 78 -> Weather.CLOUDY
             else -> Weather.RAIN
         }
+        if (weatherCache.size > 128) weatherCache.clear()
+        weatherCache[key] = w
+        return w
     }
 
     /** 月相 0=新月 … 4=满月 … 7=残月（按 29.53 天周期近似） */
     fun moonPhase(now: Long = System.currentTimeMillis()): Int {
         val days = now / 86_400_000.0
         val synodic = 29.530588
-        val knownNewMoon = 947_182_440_000L / 86_400_000.0 // 2000-01-06 新月
-        var x = ((days - knownNewMoon) % synodic + synodic) % synodic
+        val knownNewMoon = 947_182_440_000.0 / 86_400_000.0 // 2000-01-06 新月
+        val x = ((days - knownNewMoon) % synodic + synodic) % synodic
         return ((x / synodic) * 8).toInt().coerceIn(0, 7)
     }
 

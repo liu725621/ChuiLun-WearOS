@@ -84,6 +84,7 @@ fun ChuiLunApp(engine: GameEngine, onExit: () -> Unit) {
             Dest.STATS -> StatsScreen(engine) {
                 engine.save.resetAll()
                 engine.syncWallet()
+                engine.syncDex()
                 stack = listOf(Dest.FISHING)
             }
 

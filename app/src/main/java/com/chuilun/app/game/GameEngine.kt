@@ -129,8 +129,14 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
 
     // ---------------- 派生 ----------------
 
-    val caughtBiology: Int get() = save.caughtBiology
-    val caughtJunk: Int get() = save.caughtJunk
+    /**
+     * 图鉴计数用 State 暴露：钓到新鱼时 UI 才会跟着刷新。
+     * 之前是普通 getter（读 SharedPreferences 派生值），钓完鱼回到首页数字不变。
+     */
+    var caughtBiology: Int by mutableIntStateOf(0)
+        private set
+    var caughtJunk: Int by mutableIntStateOf(0)
+        private set
     val phaseIndex: Int get() = Env.phaseIndex()
     val seasonIndex: Int get() = Env.seasonIndex()
 
@@ -168,6 +174,7 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
         festival = DailyEvents.festivalOf()
         tide = DailyEvents.activeTide(day)
         syncWallet()
+        syncDex()
 
         // 首次启动补一个鱼汛排期
         if (save.tideSpotId.isBlank()) {
@@ -183,6 +190,11 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
     fun syncWallet() {
         coins = save.coins
         bait = save.bait
+    }
+
+    fun syncDex() {
+        caughtBiology = save.caughtBiology
+        caughtJunk = save.caughtJunk
     }
 
     fun refreshTimeState() {
@@ -332,6 +344,7 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
         val reward = if (fish.junk) fish.rarity else fish.rarity * fish.rarity
         save.earnCoins(reward)
         syncWallet()
+        syncDex()
 
         val rec = CatchRecord(
             speciesId = fish.id,

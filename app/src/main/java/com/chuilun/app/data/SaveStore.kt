@@ -17,7 +17,12 @@ data class DexEntry(
 
 /**
  * 本地存档。SharedPreferences 实现，无额外依赖。
- * 保存：图鉴、个人最佳、鱼饵与金币、灵敏度、每日事件与鱼汛状态。
+ *
+ * 性能注意：界面每一帧都会问「这个物种钓到过吗 / 最好多长」。
+ * 原实现的 `caughtIds` 每次 get 都把整条字符串重新 split + filter + toSet
+ * （一次 ≈ 上百次字符串分配），而 `isCaught()` 又直接调它 ——
+ * 图鉴列表滚一下就是几万次分配，这是「很卡」的首要原因。
+ * 现在全部走内存缓存，写入时增量更新，SharedPreferences 只在启动读一次。
  */
 class SaveStore(context: Context) {
 
@@ -26,39 +31,69 @@ class SaveStore(context: Context) {
 
     private val recent = ArrayDeque<CatchRecord>()
 
+    // ---------------- 内存缓存 ----------------
+
+    @Volatile
+    private var caughtCache: MutableSet<String>? = null
+
+    private val bestLenCache = HashMap<String, Float>()
+    private val bestKgCache = HashMap<String, Float>()
+    private val countCache = HashMap<String, Int>()
+
+    private var bioCountCache = -1
+    private var junkCountCache = -1
+
+    private fun caughtSet(): MutableSet<String> {
+        caughtCache?.let { return it }
+        val s = (prefs.getString(KEY_CAUGHT, "") ?: "")
+            .split('|').filterTo(HashSet()) { it.isNotBlank() }
+        caughtCache = s
+        return s
+    }
+
     // ---------------- 图鉴 ----------------
 
-    val caughtIds: Set<String>
-        get() = (prefs.getString(KEY_CAUGHT, "") ?: "")
-            .split('|').filter { it.isNotBlank() }.toSet()
+    val caughtIds: Set<String> get() = caughtSet()
 
-    fun isCaught(id: String): Boolean = caughtIds.contains(id)
+    fun isCaught(id: String): Boolean = caughtSet().contains(id)
 
     /** 生物收集数（不含垃圾与旧物），用于钓场解锁与完成度 */
     val caughtBiology: Int
         get() {
-            val c = caughtIds
-            return BIOLOGY.count { c.contains(it.id) }
+            if (bioCountCache < 0) {
+                val c = caughtSet()
+                bioCountCache = BIOLOGY.count { c.contains(it.id) }
+            }
+            return bioCountCache
         }
 
     val caughtJunk: Int
         get() {
-            val c = caughtIds
-            return JUNK.count { c.contains(it.id) }
+            if (junkCountCache < 0) {
+                val c = caughtSet()
+                junkCountCache = JUNK.count { c.contains(it.id) }
+            }
+            return junkCountCache
         }
 
     fun caughtIn(category: Category): Int {
-        val c = caughtIds
+        val c = caughtSet()
         return ALL_SPECIES.count { it.category == category && c.contains(it.id) }
     }
 
     // ---------------- 个人最佳 ----------------
 
-    fun bestLength(id: String): Float = prefs.getFloat("len_$id", 0f)
+    fun bestLength(id: String): Float = bestLenCache[id] ?: prefs.getFloat("len_$id", 0f).also {
+        bestLenCache[id] = it
+    }
 
-    fun bestWeight(id: String): Float = prefs.getFloat("kg_$id", 0f)
+    fun bestWeight(id: String): Float = bestKgCache[id] ?: prefs.getFloat("kg_$id", 0f).also {
+        bestKgCache[id] = it
+    }
 
-    fun catchCount(id: String): Int = prefs.getInt("cnt_$id", 0)
+    fun catchCount(id: String): Int = countCache[id] ?: prefs.getInt("cnt_$id", 0).also {
+        countCache[id] = it
+    }
 
     // ---------------- 资源 ----------------
 
@@ -72,8 +107,9 @@ class SaveStore(context: Context) {
 
     /** 抛竿消耗一枚鱼饵，返回是否成功 */
     fun spendBait(): Boolean {
-        if (bait <= 0) return false
-        bait = bait - 1
+        val b = bait
+        if (b <= 0) return false
+        bait = b - 1
         return true
     }
 
@@ -152,14 +188,31 @@ class SaveStore(context: Context) {
 
     /** 记录一次成功上鱼，返回是否为首次捕获 */
     fun recordCatch(s: Species, lengthCm: Float, weightKg: Float, isRecord: Boolean): Boolean {
-        val first = !isCaught(s.id)
-        val next = caughtIds.toMutableSet().apply { add(s.id) }
+        val set = caughtSet()
+        val first = !set.contains(s.id)
+        val prevLen = bestLength(s.id)
+        val prevKg = bestWeight(s.id)
+        val prevCnt = catchCount(s.id)
+
+        set.add(s.id)
+        if (first) {
+            bioCountCache = -1
+            junkCountCache = -1
+        }
+
         val edit = prefs.edit()
-            .putString(KEY_CAUGHT, next.joinToString("|"))
+            .putString(KEY_CAUGHT, set.joinToString("|"))
             .putInt(KEY_CATCHES, totalCatches + 1)
-            .putInt("cnt_${s.id}", catchCount(s.id) + 1)
-        if (lengthCm > bestLength(s.id)) edit.putFloat("len_${s.id}", lengthCm)
-        if (weightKg > bestWeight(s.id)) edit.putFloat("kg_${s.id}", weightKg)
+            .putInt("cnt_${s.id}", prevCnt + 1)
+        countCache[s.id] = prevCnt + 1
+        if (lengthCm > prevLen) {
+            edit.putFloat("len_${s.id}", lengthCm)
+            bestLenCache[s.id] = lengthCm
+        }
+        if (weightKg > prevKg) {
+            edit.putFloat("kg_${s.id}", weightKg)
+            bestKgCache[s.id] = weightKg
+        }
         if (isRecord) edit.putInt(KEY_RECORDS, totalRecords + 1)
         edit.apply()
         return first
@@ -170,7 +223,7 @@ class SaveStore(context: Context) {
     }
 
     fun dexEntries(): List<DexEntry> {
-        val c = caughtIds
+        val c = caughtSet()
         return ALL_SPECIES.map { s ->
             DexEntry(
                 species = s,
@@ -192,6 +245,12 @@ class SaveStore(context: Context) {
     fun resetAll() {
         prefs.edit().clear().apply()
         recent.clear()
+        caughtCache = null
+        bestLenCache.clear()
+        bestKgCache.clear()
+        countCache.clear()
+        bioCountCache = -1
+        junkCountCache = -1
     }
 
     companion object {
