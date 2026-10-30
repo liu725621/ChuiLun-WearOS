@@ -26,9 +26,13 @@ object Tuning {
     const val SENSITIVITY_MIN = 0.35f
     const val SENSITIVITY_MAX = 2.60f
 
-    /** 抛投距离换算：近端 / 远端（米） */
+    /**
+     * 抛投距离换算：近端 / 远端（米）。
+     * 远端取 99 是为了让抛竿页那把 0–99M 的刻度尺与原作的读数一致。
+     * 所有消费方用的都是归一化比例，改这里只影响显示出来的米数，不影响出鱼分布。
+     */
     const val CAST_DIST_NEAR = 3f
-    const val CAST_DIST_FAR = 60f
+    const val CAST_DIST_FAR = 99f
 
     /** 抛物线飞行动画时长（毫秒） */
     const val FLY_DURATION_MS = 900L

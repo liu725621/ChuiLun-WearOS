@@ -71,6 +71,13 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
     var fight: FightEngine? by mutableStateOf(null)
         private set
 
+    /**
+     * 遛鱼心跳。FightEngine 内部字段是普通 Float，改它们不会通知 Compose；
+     * 界面在绘制阶段读这个计数，就能每 tick 重绘一次表盘而不重组整棵树。
+     */
+    var fightTick by mutableIntStateOf(0)
+        private set
+
     var reeling by mutableStateOf(false)
 
     var outcome: FightOutcome? by mutableStateOf(null)
@@ -211,7 +218,7 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
     }
 
     fun goSpotList() {
-        detector.stop()
+        detector.cancel()
         stage = Stage.SPOT
     }
 
@@ -241,6 +248,15 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
         }
         stage = Stage.ARMED
         detector.start(scope, save.sensitivity) { p -> castTo(p) }
+    }
+
+    /** 抛竿页点一下屏幕：未开始就起竿，已开始就按当前力度抛出去 */
+    fun castTap() {
+        when (stage) {
+            Stage.READY -> armCast()
+            Stage.ARMED -> detector.lockIn()
+            else -> Unit
+        }
     }
 
     private fun castTo(p: Float) {
@@ -299,9 +315,10 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
             delay(total / (teases + 1))
             waitHint = "咬钩！"
             Feedback.bite()
-            delay(400)
+            delay(800)   // 留出「提竿」一屏，一屏只闪一下看不清
             fight = FightEngine(fish)
             stage = Stage.FIGHT
+            fightTick = 0
             runFightLoop()
         }
     }
@@ -312,6 +329,7 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
                 delay(Tuning.FIGHT_TICK_MS)
                 val f = fight ?: break
                 val r = f.tick(Tuning.FIGHT_TICK_MS / 1000f, reeling)
+                fightTick++
                 if (r != null) {
                     finish(r)
                     break
@@ -429,7 +447,7 @@ class GameEngine(private val context: Context, private val scope: CoroutineScope
         }
     }
 
-    fun stopSensors() = detector.stop()
+    fun stopSensors() = detector.cancel()
 
     fun spotOf(id: String): Spot? = SPOT_BY_ID[id]
 }

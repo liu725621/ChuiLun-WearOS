@@ -49,14 +49,14 @@ fun ChuiLunApp(engine: GameEngine, onExit: () -> Unit) {
                     onStats = { stack = stack + Dest.STATS },
                     onShop = { stack = stack + Dest.SHOP }
                 )
-                Stage.READY -> ReadyScreen(
+                // 准备、挥臂、飞行共用一屏：原作抛竿页就是「站在这儿挥手臂」
+                Stage.READY, Stage.ARMED, Stage.FLYING -> CastScreen(
                     engine = engine,
                     onBack = { engine.goSpotList() },
-                    onIndex = { stack = stack + Dest.INDEX }
+                    onIndex = { stack = stack + Dest.INDEX },
+                    onShop = { stack = stack + Dest.SHOP }
                 )
-                Stage.ARMED -> ArmedScreen(engine)
-                Stage.FLYING -> FlyingScreen(engine)
-                Stage.WAITING -> WaitingScreen(engine)
+                Stage.WAITING -> WaitScreen(engine)
                 Stage.FIGHT -> FightScreen(engine)
                 Stage.RESULT -> ResultScreen(
                     engine = engine,

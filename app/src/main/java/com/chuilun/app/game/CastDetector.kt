@@ -31,6 +31,8 @@ class CastDetector(context: Context) {
             ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
     private var listener: SensorEventListener? = null
+    private var onDone: ((Float) -> Unit)? = null
+    private var fired = false
     private var smooth = 0f
     private var lastMotionAt = 0L
 
@@ -44,6 +46,8 @@ class CastDetector(context: Context) {
 
     fun start(scope: CoroutineScope, sensitivity: Float, onFinish: (Float) -> Unit) {
         stop()
+        fired = false
+        onDone = onFinish
         peakPower = 0f
         livePower = 0f
         smooth = 0f
@@ -89,9 +93,34 @@ class CastDetector(context: Context) {
                 val settled = peakPower > 0.08f && now - lastMotionAt > 450
                 if (timedOut || settled) break
             }
-            stop()
-            onFinish(peakPower)
+            fire(peakPower)
         }
+    }
+
+    /**
+     * 立即结算当前力度。
+     * 挥臂时不方便看屏幕的人，或者模拟器/无传感器设备，点一下屏幕就能抛出去。
+     */
+    fun lockIn() {
+        if (onDone == null || fired) return
+        fire(maxOf(peakPower, 0.18f))
+    }
+
+    /** 放弃本次抛竿：停掉传感器且不再回调，避免离开页面之后还突然抛出去 */
+    fun cancel() {
+        fired = true
+        onDone = null
+        stop()
+    }
+
+    /** 只结算一次 */
+    private fun fire(p: Float) {
+        if (fired) return
+        fired = true
+        val cb = onDone
+        onDone = null
+        stop()
+        cb?.invoke(p)
     }
 
     fun stop() {
