@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>垂纶 · Wear OS 下载</title>
+<style>
+  :root{--bg:#060c0a;--green:#2ee66b;--dim:#6e8e7c;--ink:#d8f0e0;--amber:#ffb020}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono CJK SC",monospace;
+       min-height:100vh;background-image:repeating-linear-gradient(0deg,transparent 0 3px,rgba(46,230,107,.035) 3px 4px)}
+  .wrap{max-width:680px;margin:0 auto;padding:48px 24px 72px}
+  .kicker{color:var(--dim);font-size:12px;letter-spacing:.28em}
+  h1{font-size:44px;letter-spacing:.32em;margin:14px 0 6px;color:var(--green);text-shadow:0 0 22px rgba(46,230,107,.35)}
+  .sub{color:var(--dim);font-size:13px;line-height:1.9}
+  .card{margin-top:34px;border:1px solid rgba(46,230,107,.35);background:rgba(46,230,107,.045);padding:26px 26px 28px}
+  .ver{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px dashed rgba(46,230,107,.22);padding-bottom:18px;margin-bottom:22px}
+  .ver b{font-size:24px;color:var(--green);letter-spacing:.06em}
+  .ver span{font-size:12px;color:var(--dim)}
+  .btn{display:block;text-align:center;text-decoration:none;padding:18px 20px;font-size:17px;font-weight:700;letter-spacing:.1em;
+       color:#04140a;background:var(--green);border:1px solid var(--green);transition:.18s}
+  .btn:hover{background:#5cff92;box-shadow:0 0 26px rgba(46,230,107,.45)}
+  .btn.alt{margin-top:12px;background:transparent;color:var(--green);font-size:13px;font-weight:400;padding:13px;letter-spacing:.04em}
+  .btn.alt:hover{background:rgba(46,230,107,.1);box-shadow:none}
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:22px;font-size:12px}
+  .meta div{border-left:2px solid rgba(46,230,107,.3);padding-left:10px}
+  .meta span{display:block;color:var(--dim);font-size:11px;margin-bottom:4px}
+  h2{font-size:14px;color:var(--green);letter-spacing:.18em;margin:36px 0 12px;font-weight:600}
+  ol,ul{color:var(--ink);font-size:13px;line-height:2;padding-left:20px}
+  li::marker{color:var(--dim)}
+  code{background:rgba(46,230,107,.09);padding:2px 7px;font-size:12px;color:var(--green)}
+  .warn{margin-top:30px;border-left:3px solid var(--amber);padding:12px 16px;font-size:12px;color:var(--dim);line-height:1.9;background:rgba(255,176,32,.05)}
+  footer{margin-top:44px;color:#3c5849;font-size:11px;line-height:1.9}
+  a.link{color:var(--green);text-decoration:none;border-bottom:1px dotted rgba(46,230,107,.4)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">GALAXY WATCH 7 · WEAR OS 5</div>
+  <h1>垂 纶</h1>
+  <div class="sub">声呐 HUD 风格的体感钓鱼游戏 · 挥臂抛竿、等咬钩、按住收线<br>161 种生物 / 104 件旧物 / 17 处钓场 / 每日事件与钓鱼指数</div>
+
+  <div class="card">
+    <div class="ver"><b>v2.3.0</b><span>圆形屏适配修正版 · versionCode 7</span></div>
+    <a class="btn" href="https://github.com/liu725621/ChuiLun-WearOS/releases/download/v2.3.0/chuilun-v2.3.0-debug.apk">↓ &nbsp;下载 APK（直连）</a>
+    <a class="btn alt" href="https://github.com/liu725621/ChuiLun-WearOS/releases/tag/v2.3.0">前往 GitHub Release 页面</a>
+    <div class="meta">
+      <div><span>文件</span>chuilun-v2.3.0-debug.apk</div>
+      <div><span>体积</span>27.5 MB</div>
+      <div><span>MD5</span><code style="font-size:10px">9f0872baf93e0f5c81830c52b930a859</code></div>
+      <div><span>适用</span>Android 13+ / Wear OS</div>
+    </div>
+  </div>
+
+  <h2>安装</h2>
+  <ol>
+    <li>在手表上打开「开发者选项」，启用 <b>通过 WLAN 调试</b>（或 ADB 调试）。</li>
+    <li>把 APK 下载到手机或电脑，用 <code>adb install chuilun-v2.3.0-debug.apk</code> 安装；<br>也可借助 Wear OS 工具箱 / Bugjaeger 从手机推送。</li>
+    <li>首次进入先做一次「校准抛竿力度」，按提示自然挥三次手臂即可。</li>
+    <li>debug 签名，覆盖安装前若提示签名不一致，请先卸载旧版（存档会清空）。</li>
+  </ol>
+
+  <h2>这一版改了什么</h2>
+  <ul>
+    <li><b>修复真机圆形屏裁切</b>：左侧 0–99M 刻度数字、顶栏两端、左下「抛竿」、右下鱼饵原先被圆弧啃掉。</li>
+    <li>根因是设计稿按 192dp 排布，真机却是 240dp（480px @ 2.0），坐标随系统密度漂移。现在统一把设计密度按屏幕直径归一化，所有界面在任意圆形屏上保持相同相对位置。</li>
+    <li>渲染快照测试改为真机尺寸（240dp），并加入圆外像素自动检测，避免再出现「快照没问题、真机被切」。</li>
+    <li>抛竿 / 提竿 / 遛鱼 / 上鱼界面延续 v2.2.0 的《鱼影》式仪表布局。</li>
+  </ul>
+
+  <div class="warn">安装前请确认手表已允许安装未知来源应用。此版本仍为 debug 签名，未配置正式 release 签名。</div>
+
+  <footer>
+    源码与历史版本：<a class="link" href="https://github.com/liu725621/ChuiLun-WearOS">github.com/liu725621/ChuiLun-WearOS</a><br>
+    本项目为原创实现，仅借鉴交互与视觉语言，不使用《鱼影》任何素材。像素字体 Zpix（MIT）。
+  </footer>
+</div>
+</body>
+</html>

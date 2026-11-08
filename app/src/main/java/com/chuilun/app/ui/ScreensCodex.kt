@@ -52,7 +52,7 @@ fun DexScreen(engine: GameEngine, onDetail: (String) -> Unit, onCategory: (Categ
         }
     }
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,
@@ -124,7 +124,7 @@ fun CategoryScreen(engine: GameEngine, category: Category, onDetail: (String) ->
     val ctx = LocalContext.current
     val total = remember(category) { list.size }
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,
@@ -178,7 +178,7 @@ fun DetailScreen(engine: GameEngine, id: String) {
     val state = rememberLazyListState()
     val now = System.currentTimeMillis()
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,
@@ -282,7 +282,7 @@ fun IndexScreen(engine: GameEngine, onBack: () -> Unit) {
     val cur = Env.phaseIndex(now)
     val tides = remember(day) { DailyEvents.tidesFor(day) }
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,
@@ -380,7 +380,7 @@ fun StatsScreen(engine: GameEngine, onReset: () -> Unit) {
         }
     }
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,
@@ -416,7 +416,7 @@ fun ShopScreen(engine: GameEngine, onBack: () -> Unit) {
         "不额外加成", "高星鱼权重 +35%", "高星鱼权重 +70%，事件概率提升"
     )
 
-    HudBackground {
+    HudBackground(edgeFade = true) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = state,

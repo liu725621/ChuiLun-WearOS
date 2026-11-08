@@ -14,8 +14,8 @@ android {
         // targetSdk 必须与 Wear OS 5（Galaxy Watch 7 = Android 14 / API 34）对齐。
         // 之前设成 36，而设备只有 34，系统会按"未来版本"解析部分行为，是闪退的嫌疑之一。
         targetSdk = 34
-        versionCode = 6
-        versionName = "2.2.0"
+        versionCode = 7
+        versionName = "2.3.0"
     }
 
     compileOptions {

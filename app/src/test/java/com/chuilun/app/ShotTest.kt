@@ -44,22 +44,27 @@ import java.time.Duration
  * 圆形屏渲染快照。
  *
  * 不用 compose-test 的 waitForIdle（它会跟 Choreographer 死等），改为手动推进主线程
- * Looper 后直接把 decorView 画到 Bitmap。产出 192dp 见方的真实像素，用于核对裁切。
+ * Looper 后直接把 decorView 画到 Bitmap。产出 240dp 见方的真实像素，用于核对裁切。
  *
  * 注意：所有推进都带时长上限（idleFor），无限动画的页面才不会把测试挂死。
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w192dp-h192dp-round-xxhdpi")
+@Config(sdk = [34], qualifiers = "w240dp-h240dp-round-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ShotTest {
 
-    private val px = 576 // 192dp * 3.0
+    private val px = 720 // 240dp * 3.0，几何比例与真机 480px@2.0 完全一致
 
     private fun looper() = Shadows.shadowOf(Looper.getMainLooper())
 
+    /** 复用同一个宿主 Activity：每屏重建 Activity 在 720px 下要 40 秒以上 */
+    private var host: ComponentActivity? = null
+    private fun activity(): ComponentActivity =
+        host ?: Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
+            .also { host = it }
+
     private fun render(name: String, content: @Composable () -> Unit) {
-        val controller = Robolectric.buildActivity(ComponentActivity::class.java)
-        val activity = controller.setup().get()
+        val activity = activity()
         activity.setContent { MaterialTheme { content() } }
         repeat(3) { looper().idleFor(Duration.ofMillis(20)) }
         val root: View = activity.window.decorView

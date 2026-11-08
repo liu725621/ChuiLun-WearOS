@@ -17,20 +17,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Text
@@ -63,13 +67,13 @@ object Hud {
 /**
  * 圆形屏安全区。
  *
- * Galaxy Watch 7 是 480×480 的纯圆屏（192dp 直径）。任何贴到左右边缘的长文本，
- * 只要不在屏幕正中，就会被圆弧切掉 —— 这是「UI 没适配」的直接原因。
+ * 设计坐标系固定为 192×192（圆心 96,96，半径 96）。真机 240dp 由 HudBackground
+ * 里的 designDensity 缩放映射，所以这里的所有数值都是「设计单位」，不是真机 dp。
  *
- * 几何：圆半径 96dp。距中心 dy 处的可用半宽 = √(96² − dy²)。
- * 取内容区 y ∈ [36, 156]（即垂直居中、上下各留 36dp），此区间内
- * 最窄处（y=36 与 y=156）可用宽度 = 2×√(96²−60²) ≈ 150dp。
- * 因此左右各留 20dp、内容宽 152dp 时，整屏内容都落在圆内。
+ * 几何：圆半径 96。距中心 dy 处的可用半宽 = √(96² − dy²)。
+ * 取内容区 y ∈ [36, 156]（垂直居中、上下各留 36），此区间内
+ * 最窄处（y=36 与 y=156）可用宽度 = 2×√(96²−60²) ≈ 150。
+ * 因此左右各留 20、内容宽 152 设计单位时，整屏内容都落在圆内。
  */
 object Round {
     val Side = 20.dp
@@ -125,29 +129,72 @@ fun hudStyle(size: Int, color: Color = Hud.Ink, bold: Boolean = false): TextStyl
  * 不会因为内部文字重组而每帧重画上百条线。
  */
 @Composable
-fun HudBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    Box(modifier = modifier.background(Hud.Bg)) {
+fun HudBackground(
+    modifier: Modifier = Modifier,
+    /** 长列表专用：上下边缘渐隐，滚动内容经过圆弧时不会硬生生被切一刀 */
+    edgeFade: Boolean = false,
+    content: @Composable BoxScope.() -> Unit
+) {
+    /**
+     * 设计稿按 192dp 圆屏排布，但 Galaxy Watch 7 真机是 240dp（480px @ xhdpi / density 2.0）。
+     *
+     * 之前直接沿用系统 density：Canvas 里的 u(dp)=dp*density 和 Compose 里的 20.dp 都会
+     * 随密度漂移，同一份坐标在 240dp 屏上被整体推向圆弧 —— 真机截图里左侧 99M 刻度、
+     * 顶栏两端、左下「抛竿」、右下鱼饵全被圆边啃掉，而 192dp 的渲染快照却看不出来。
+     *
+     * 这里把「设计密度」钉死：effective = systemDensity × (screenWidthDp / 192)。
+     * 于是无论 192dp@2.5 还是 240dp@2.0，所有 dp 与 Canvas 坐标在屏幕上都落在
+     * 完全相同的相对位置，圆内余量不变。所有页面都以此为背景，一处生效。
+     */
+    val screenDp = LocalConfiguration.current.screenWidthDp.toFloat().coerceIn(160f, 320f)
+    val base = LocalDensity.current
+    val designDensity = Density(
+        density = base.density * screenDp / 192f,
+        fontScale = base.fontScale
+    )
+    CompositionLocalProvider(LocalDensity provides designDensity) {
         Box(
-            Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val gap = 4f
-                    val glow = Brush.radialGradient(
-                        colors = listOf(Color(0x0F2EE66B), Color.Transparent),
-                        center = Offset(size.width / 2f, size.height * 0.42f),
-                        radius = size.width * 0.72f
+            modifier = modifier
+                .background(Hud.Bg)
+                .then(if (edgeFade) Modifier.drawWithContent {
+                    drawContent()
+                    drawRect(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to Hud.Bg,
+                                0.09f to Color.Transparent,
+                                0.82f to Color.Transparent,
+                                1f to Hud.Bg
+                            ),
+                            startY = 0f,
+                            endY = size.height
+                        ),
+                        size = Size(size.width, size.height)
                     )
-                    onDrawBehind {
-                        var y = 0f
-                        while (y < size.height) {
-                            drawLine(Hud.Scan, Offset(0f, y), Offset(size.width, y), 1f)
-                            y += gap
+                } else Modifier)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .drawWithCache {
+                        val gap = 4f
+                        val glow = Brush.radialGradient(
+                            colors = listOf(Color(0x0F2EE66B), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height * 0.42f),
+                            radius = size.width * 0.72f
+                        )
+                        onDrawBehind {
+                            var y = 0f
+                            while (y < size.height) {
+                                drawLine(Hud.Scan, Offset(0f, y), Offset(size.width, y), 1f)
+                                y += gap
+                            }
+                            drawRect(brush = glow, size = Size(size.width, size.height))
                         }
-                        drawRect(brush = glow, size = Size(size.width, size.height))
                     }
-                }
-        )
-        content()
+            )
+            content()
+        }
     }
 }
 

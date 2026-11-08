@@ -289,12 +289,13 @@ fun CastScreen(
 
                 // 左：距离刻度尺
                 drawRuler(
-                    xDp = 42f, topDp = 44f, bottomDp = 138f,
-                    divisions = 20, value = dist / Tuning.CAST_DIST_FAR
+                    xDp = 48f, topDp = 46f, bottomDp = 136f,
+                    divisions = 20, value = dist / Tuning.CAST_DIST_FAR,
+                    cursorDp = 20f
                 )
-                drawHudText(tm, "99M", sTiny, 30f, 44f, center = true)
-                drawHudText(tm, "50M", sTiny, 30f, 91f, center = true)
-                drawHudText(tm, "0M", sTiny, 30f, 138f, center = true)
+                drawHudText(tm, "99M", sTiny, 36f, 46f, center = true)
+                drawHudText(tm, "50M", sTiny, 36f, 91f, center = true)
+                drawHudText(tm, "0M", sTiny, 36f, 136f, center = true)
 
                 // 中：预计落点
                 drawHudText(tm, "${dist.roundToInt()}M", sBigNum, 98f, 84f, center = true)
@@ -309,7 +310,7 @@ fun CastScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 34.dp, end = 34.dp, top = 24.dp),
+                    .padding(start = 40.dp, end = 40.dp, top = 28.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -322,7 +323,7 @@ fun CastScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 44.dp, bottom = 18.dp)
+                    .padding(start = 50.dp, bottom = 24.dp)
             ) {
                 HudText(
                     when (stage) {
@@ -347,7 +348,7 @@ fun CastScreen(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 38.dp, bottom = 20.dp),
+                    .padding(end = 46.dp, bottom = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 HudText("${engine.bait}", 13, Hud.Amber)
@@ -404,12 +405,12 @@ internal fun WaitIdleScreen(engine: GameEngine) {
     HudBackground {
         Canvas(Modifier.fillMaxSize()) {
             val v = (dist / Tuning.CAST_DIST_FAR).coerceIn(0f, 1f)
-            drawRuler(42f, 44f, 138f, 20, v)
-            drawHudText(tm, "99M", sTiny, 30f, 44f, center = true)
-            drawHudText(tm, "0M", sTiny, 30f, 138f, center = true)
+            drawRuler(48f, 46f, 136f, 20, v, cursorDp = 20f)
+            drawHudText(tm, "99M", sTiny, 36f, 46f, center = true)
+            drawHudText(tm, "0M", sTiny, 36f, 136f, center = true)
 
             // 游标末端的小扩散环，像浮标在水面一下下沉：ph 在绘制阶段读
-            val cy = 138f - 94f * v
+            val cy = 136f - 90f * v
             drawPulseRing(74f, cy, 10f, ph, Hud.Green)
 
             drawHudText(tm, "${dist.roundToInt()}M", sBigNum, 98f, 84f, center = true)
@@ -510,15 +511,16 @@ fun FightScreen(engine: GameEngine) {
 
                 // 左：剩余距离
                 drawRuler(
-                    xDp = 38f, topDp = 54f, bottomDp = 140f,
-                    divisions = 10, value = remain / total, accent = Hud.GreenDim
+                    xDp = 44f, topDp = 56f, bottomDp = 138f,
+                    divisions = 10, value = remain / total, accent = Hud.GreenDim,
+                    cursorDp = 12f
                 )
-                drawHudText(tm, "${remain.roundToInt()}M", sValue, 38f, 40f, center = true)
-                drawHudText(tm, "距离", sTiny, 38f, 148f, center = true)
+                drawHudText(tm, "${remain.roundToInt()}M", sValue, 44f, 44f, center = true)
+                drawHudText(tm, "距离", sTiny, 44f, 146f, center = true)
 
                 // 右：张力
                 drawGauge(
-                    xDp = 154f, topDp = 54f, bottomDp = 140f,
+                    xDp = 148f, topDp = 56f, bottomDp = 138f,
                     value = t, accent = tc,
                     dangerFrom = Tuning.TENSION_DANGER,
                     widthDp = 9f
@@ -528,8 +530,8 @@ fun FightScreen(engine: GameEngine) {
                     t >= 0.70f -> sAmber
                     else -> sValue
                 }
-                drawHudText(tm, "${(t * 100).roundToInt()}%", sT, 154f, 40f, center = true)
-                drawHudText(tm, "张力", sTiny, 154f, 148f, center = true)
+                drawHudText(tm, "${(t * 100).roundToInt()}%", sT, 148f, 44f, center = true)
+                drawHudText(tm, "张力", sTiny, 148f, 146f, center = true)
 
                 // 中：鱼影（压暗，只作剪影）。按最长边适配，竖长的物种不会糊住表盘
                 val maxW = u(58f)
